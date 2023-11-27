@@ -18,20 +18,88 @@ For more information, please also see
 websites.
 """
 
-RATELIMIT_DEFAULT = '5000/hour'
-"""Default rate limit.
+from invenio_app.limiter import set_rate_limit
 
-.. note:: Overwrite
-   Flask-Limiter <https://flask-limiter.readthedocs.io/en/stable/>`_
-   configuration.
+RATELIMIT_APPLICATION = set_rate_limit
+"""Global rate limit."""
+
+RATELIMIT_STRATEGY = "moving-window"
+"""The rate limiting strategy to use.
+
+The strategy used here is the most consistant but also expensive one.
+If you are experiencing performance issues due to the increased Redis
+traffic, you can replace it with another one from the following
+`Flask-Limiter strategies
+<https://flask-limiter.readthedocs.io/en/stable/#ratelimit-strategy>`_.
 """
 
 RATELIMIT_HEADERS_ENABLED = True
-"""Enable rate limit headers. (Default: ``True``)
+"""Enable rate limit headers. (Default: ``True``)"""
 
-.. note:: Overwrite
-   Flask-Limiter <https://flask-limiter.readthedocs.io/en/stable/>`_
-   configuration.
+RATELIMIT_STORAGE_URL = "memory://"
+"""Storage backend to store rate-limiting information.
+
+    Memory is used by default if no value is provided.
+    For more information regarding the mentioned above configuration values and
+    their available options you can see the `Flask-Limiter configuration
+    <https://flask-limiter.readthedocs.io/en/stable/#configuration>`_.
+
+.. note::
+
+   Provide your Redis URL if you are rate limiting a multithreaded application.
+
+"""
+
+RATELIMIT_KEY_FUNC = None
+"""Define custom key function.
+
+This config is not part of Flask-Limiter.
+
+This function is used to generate a unique key for each visitor to track
+the number of performed requests. If not defined, the default ``key_func``
+will be used, which will create the key by concatenating the user agent and
+the IP address of the user.
+
+For more information you can also see `here
+<https://flask-limiter.readthedocs.io/en/stable/#rate-limit-domain>`_
+"""
+
+RATELIMIT_PER_ENDPOINT = {}
+"""Specifically defined Flask rate limits per endpoint.
+
+This config is not part of Flask-Limiter.
+Use this for endpoints that need to be *whitelisted*, providing the Flask
+blueprint path accompanied by a `rate limit value
+<https://flask-limiter.readthedocs.io/en/stable/#rate-limit-string-notation>`_.
+
+.. code-block:: python
+
+    RATELIMIT_PER_ENDPOINT = \
+    {
+        'zenodo_frontpage.index': '10 per second',
+        'security.login': '10 per second'
+    }
+"""
+
+RATELIMIT_AUTHENTICATED_USER = "5000 per hour;100 per minute"
+"""Rate limit for logged in users."""
+
+RATELIMIT_GUEST_USER = "1000 per hour;60 per minute"
+"""Rate limit for non logged in users."""
+
+APP_THEME = None
+"""Application-wide themes list used for template and assets lookup.
+
+The value is a list of theme strings applied in a fallback fashion in the order
+they are specified:
+
+.. code-block:: python
+
+    APP_THEME = ['my-overlay', 'semantic-ui']
+
+From the above example, templates and assets with the ``my-overlay`` prefix
+will be looked up first, and if not found the ``semantic-ui`` prefix will be
+used. If none of the lookups are successful, a non-prefixed lookup is done.
 """
 
 APP_ENABLE_SECURE_HEADERS = True
@@ -48,23 +116,20 @@ enough to disable any side effects such as force ``https``.
 """
 
 APP_DEFAULT_SECURE_HEADERS = {
-    'force_https': True,
-    'force_https_permanent': False,
-    'force_file_save': False,
-    'frame_options': 'sameorigin',
-    'frame_options_allow_from': None,
-    'strict_transport_security': True,
-    'strict_transport_security_preload': False,
-    'strict_transport_security_max_age': 31556926,  # One year in seconds
-    'strict_transport_security_include_subdomains': True,
-    'content_security_policy': {
-        'default-src': ["'self'"],
-        'object-src': ["'none'"]
-    },
-    'content_security_policy_report_uri': None,
-    'content_security_policy_report_only': False,
-    'session_cookie_secure': True,
-    'session_cookie_http_only': True
+    "force_https": True,
+    "force_https_permanent": False,
+    "force_file_save": False,
+    "frame_options": "sameorigin",
+    "frame_options_allow_from": None,
+    "strict_transport_security": True,
+    "strict_transport_security_preload": False,
+    "strict_transport_security_max_age": 31556926,  # One year in seconds
+    "strict_transport_security_include_subdomains": True,
+    "content_security_policy": {"default-src": ["'self'"], "object-src": ["'none'"]},
+    "content_security_policy_report_uri": None,
+    "content_security_policy_report_only": False,
+    "session_cookie_secure": True,
+    "session_cookie_http_only": True,
 }
 """Talisman default Secure Headers configuration.
 
@@ -115,4 +180,22 @@ header.
 
 APP_HEALTH_BLUEPRINT_ENABLED = True
 """Enable the ping (healthcheck) blueprint. (Default: ``False``)
+"""
+
+APP_REQUESTID_HEADER = "X-Request-Id"
+"""Name of header containing a request id (max length 200 characters).
+
+If set, the request id will be extracted from the header and set on the global
+Flask ``g`` request object. The extracted request id can be used by other
+Invenio modules - e.g. Invenio-Logging could include it in log messages.
+
+The request id can be used to trace requests between systems to make
+troubleshooting easier.
+
+You can configure Nginx 1.10+ to automatically generate a request id and
+add it as a header to both the upstream WSGI server and downstream client::
+
+    add_header X-Request-ID $request_id;
+
+Set to ``None`` to not extract a request id.
 """
